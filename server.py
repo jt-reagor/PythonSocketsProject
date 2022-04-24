@@ -26,6 +26,7 @@ class File:
         self.upload_date = datetime.date.today().strftime("%x")
         self.upload_time = datetime.datetime.now().strftime("%H: %M: %S")
         self.num_downloads = 0
+        self.open_semaphore = False
 
 
 def receive(client, size=SIZE):
@@ -54,14 +55,14 @@ def handle_client(conn, addr):
         cmd = data[0]
 
         send_data = START + SPLIT  # prep response message
+
         if cmd == "VERIFY":
-            if data[1] in usernames and data[2] in passwords:
+            if data[1] in usernames and passwords[usernames.index(data[1])] == data[2]:
                 send_data += "Access Granted"
-                conn.send(send_data.encode(FORMAT)) 
-            else:  
+                conn.send(send_data.encode(FORMAT))
+            else:
                 send_data += "LOGOUT"
                 conn.send(send_data.encode(FORMAT))
-                
 
         if cmd == "LOGOUT":
             send_data += "DISCO"
@@ -86,8 +87,13 @@ def handle_client(conn, addr):
 
         if cmd == "DELETE":
             file_name = ''.join(working_dir) + data[1]
-            os.remove(file_name)
-            print(f"Deleted {file_name}")
+            if file_dict[file_name].open_semaphore is False:
+                os.remove(file_name)
+                print(f"Deleted {file_name}")
+                send_data += "SUCCESS"
+            else:
+                send_data += "FAILED. Try again later."
+            conn.send(send_data.encode(FORMAT))
 
         if cmd == "UPLOAD":  # receives UPLOAD<SPLIT><length>
             data_length = int(data[1])
@@ -116,6 +122,7 @@ def handle_client(conn, addr):
 
         if cmd == "DOWNLOAD":  # Receives DOWNLOAD<SPLIT><filename>
             fname = ''.join(working_dir) + data[1]
+            file_dict[fname].open_semaphore = True
             f = open(fname, "rb")
             f.seek(0, 2)  # set reader at end
             length = f.tell()  # get length
@@ -123,7 +130,8 @@ def handle_client(conn, addr):
             send_data += "DOWNLOAD"+SPLIT+str(length)+SPLIT+str(fname)
             conn.send(send_data.encode(FORMAT))  # send "ready to send x bytes"
             data_back = receive(conn)  # wait for ack from server
-            print("INITIAL READY RECIEVED")
+            # print("INITIAL READY RECIEVED")
+            print(f"Sending file {fname}")
             if data_back == -1:
                 print("ERROR: PROBLEM IN READY ACK")
                 continue
@@ -143,9 +151,10 @@ def handle_client(conn, addr):
                 # print(f.tell())
             end_message = START + SPLIT + "DONE"
             conn.send(end_message.encode(FORMAT))
+            print(f"File sent")
 
             f.close()
-
+            file_dict[fname].open_semaphore = False
             file_dict[fname].num_downloads += 1
 
     print(f"{addr} disconnected.")

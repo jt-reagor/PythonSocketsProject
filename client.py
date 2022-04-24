@@ -2,7 +2,6 @@ import os
 import socket
 import time
 
-
 START = "<START>"
 SPLIT = "<SPLIT>"
 
@@ -45,11 +44,11 @@ def main():
                 print("ERROR")
                 continue
             print(data_back[0])
-            
-            username, password = map(str,input().split())
+
+            username, password = map(str, input().split())
             data_to_send += "VERIFY" + SPLIT + username + SPLIT + password
             client.send(data_to_send.encode(FORMAT))
-            
+
             data_back = receive(client)
             if data_back[0] == "LOGOUT":
                 cmd = "LOGOUT"
@@ -87,9 +86,10 @@ def main():
 
         if cmd == "DELETE":  # delete file from folder, takes one arg: filename
             fname = line_in_split[1]
-            data_to_send += "DELETE"+SPLIT+fname
+            data_to_send += "DELETE" + SPLIT + fname
             client.send(data_to_send.encode(FORMAT))
-            # add in error handling
+            data_back = receive(client)
+            print(data_back[0])
 
         if cmd == "UPLOAD":  # upload specified file to folder
             fname = line_in_split[1]
@@ -97,10 +97,11 @@ def main():
             f.seek(0, 2)  # set reader at end
             length = f.tell()  # get length
             f.seek(0, 0)  # reset pointer
-            data_to_send += "UPLOAD"+SPLIT+str(length)+SPLIT+str(fname)
+            data_to_send += "UPLOAD" + SPLIT + str(length) + SPLIT + str(fname)
             client.send(data_to_send.encode(FORMAT))  # send "ready to send x bytes"
             data_back = receive(client)  # wait for ack from server
             # print("INITIAL READY RECIEVED")
+            print(f"Sending file {fname}")
             if data_back == -1:
                 print("ERROR: PROBLEM IN READY ACK")
                 continue
@@ -119,6 +120,7 @@ def main():
                     pass
             end_message = START + SPLIT + "DONE"
             client.send(end_message.encode(FORMAT))  # tell server finished sending
+            print(f"File sent")
 
             f.close()
 
@@ -141,7 +143,7 @@ def main():
                 data_in = client.recv(BUFFLEN)
                 buff += data_in
                 # print(buff)
-                send_data = START+SPLIT+"READY"  # send ready ack
+                send_data = START + SPLIT + "READY"  # send ready ack
                 client.send(send_data.encode(FORMAT))
             f.write(buff)  # write bytes from buffer to file
             data_in = receive(client)  # get acknowledgement that client has finished
