@@ -16,8 +16,6 @@ START = "<START>"
 SPLIT = "<SPLIT>"
 working_dir = list()
 file_dict = dict()
-usernames = ["CTalbot", "JTReagor", "TCrist"]
-passwords = ["123", "456", "789"]
 
 
 class File:
@@ -41,7 +39,7 @@ def receive(client, size=SIZE):
 
 def handle_client(conn, addr):
     print(f"[NEW CONNECTION] {addr} connected.")
-    welcome = START + SPLIT + "Welcome to the server.\nInput Username and Password: "
+    welcome = START + SPLIT + "Welcome to the server."
     conn.send(welcome.encode(FORMAT))
 
     while True:
@@ -54,14 +52,6 @@ def handle_client(conn, addr):
         cmd = data[0]
 
         send_data = START + SPLIT  # prep response message
-        if cmd == "VERIFY":
-            if data[1] in usernames and data[2] in passwords:
-                send_data += "Access Granted"
-                conn.send(send_data.encode(FORMAT)) 
-            else:  
-                send_data += "LOGOUT"
-                conn.send(send_data.encode(FORMAT))
-                
 
         if cmd == "LOGOUT":
             send_data += "DISCO"
@@ -75,6 +65,8 @@ def handle_client(conn, addr):
 
         if cmd == "DIR":
             send_data = START
+            for file in os.listdir(''.join(working_dir)):  # initialize file dictionary for metadata
+                file_dict[''.join(working_dir) + file] = File(file)
             for file in os.listdir(''.join(working_dir)):
                 file_obj = file_dict[''.join(working_dir) + file]
 
@@ -84,10 +76,30 @@ def handle_client(conn, addr):
             conn.send(send_data.encode(FORMAT))
             print(f"DIR returned")
 
+        if cmd == "MKDIR":
+            new_dir_name = data[1]
+            os.mkdir("./sharedfolder/" + new_dir_name)
+            official_new_dir_name = ''.join(working_dir) + data[1]
+            new_file = File(new_dir_name)
+            file_dict[official_new_dir_name] = new_file
+            print(f"DIR {new_dir_name} created")
+
+        if cmd == "CD":
+            new_dir_name = data[1]
+            if new_dir_name != "..":
+                working_dir.append(new_dir_name + "/")
+            else:
+                del working_dir[-1]
+
         if cmd == "DELETE":
             file_name = ''.join(working_dir) + data[1]
             os.remove(file_name)
             print(f"Deleted {file_name}")
+
+        if cmd == "DELDIR":
+            dir_name = ''.join(working_dir) + data[1]
+            os.rmdir(dir_name)
+            print(f"Deleted {dir_name}")
 
         if cmd == "UPLOAD":  # receives UPLOAD<SPLIT><length>
             data_length = int(data[1])
