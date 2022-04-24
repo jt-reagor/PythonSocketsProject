@@ -45,6 +45,17 @@ def main():
                 print("ERROR")
                 continue
             print(data_back[0])
+            
+            username, password = map(str,input().split())
+            data_to_send += "VERIFY" + SPLIT + username + SPLIT + password
+            client.send(data_to_send.encode(FORMAT))
+            
+            data_back = receive(client)
+            if data_back[0] == "LOGOUT":
+                cmd = "LOGOUT"
+                print("Access Denied")
+            else:
+                print(data_back[0])
 
         if cmd == "LOGOUT":  # disconnect from server
             data_to_send += "LOGOUT"

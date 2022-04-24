@@ -16,6 +16,8 @@ START = "<START>"
 SPLIT = "<SPLIT>"
 working_dir = list()
 file_dict = dict()
+usernames = ["CTalbot", "JTReagor", "TCrist"]
+passwords = ["123", "456", "789"]
 
 
 class File:
@@ -39,7 +41,7 @@ def receive(client, size=SIZE):
 
 def handle_client(conn, addr):
     print(f"[NEW CONNECTION] {addr} connected.")
-    welcome = START + SPLIT + "Welcome to the server."
+    welcome = START + SPLIT + "Welcome to the server.\nInput Username and Password: "
     conn.send(welcome.encode(FORMAT))
 
     while True:
@@ -52,6 +54,14 @@ def handle_client(conn, addr):
         cmd = data[0]
 
         send_data = START + SPLIT  # prep response message
+        if cmd == "VERIFY":
+            if data[1] in usernames and data[2] in passwords:
+                send_data += "Access Granted"
+                conn.send(send_data.encode(FORMAT)) 
+            else:  
+                send_data += "LOGOUT"
+                conn.send(send_data.encode(FORMAT))
+                
 
         if cmd == "LOGOUT":
             send_data += "DISCO"
