@@ -76,6 +76,8 @@ def handle_client(conn, addr):
 
         if cmd == "DIR":
             send_data = START
+            for file in os.listdir(''.join(working_dir)):  # initialize file dictionary for metadata
+                file_dict[''.join(working_dir) + file] = File(file)
             for file in os.listdir(''.join(working_dir)):
                 file_obj = file_dict[''.join(working_dir) + file]
 
@@ -84,6 +86,21 @@ def handle_client(conn, addr):
                              + str(file_obj.num_downloads)
             conn.send(send_data.encode(FORMAT))
             print(f"DIR returned")
+
+        if cmd == "MKDIR":
+            new_dir_name = data[1]
+            os.mkdir("./sharedfolder/" + new_dir_name)
+            official_new_dir_name = ''.join(working_dir) + data[1]
+            new_file = File(new_dir_name)
+            file_dict[official_new_dir_name] = new_file
+            print(f"DIR {new_dir_name} created")
+
+        if cmd == "CD":
+            new_dir_name = data[1]
+            if new_dir_name != "..":
+                working_dir.append(new_dir_name + "/")
+            else:
+                del working_dir[-1]
 
         if cmd == "DELETE":
             file_name = ''.join(working_dir) + data[1]
@@ -94,6 +111,11 @@ def handle_client(conn, addr):
             else:
                 send_data += "FAILED. Try again later."
             conn.send(send_data.encode(FORMAT))
+
+        if cmd == "DELDIR":
+            dir_name = ''.join(working_dir) + data[1]
+            os.rmdir(dir_name)
+            print(f"Deleted {dir_name}")
 
         if cmd == "UPLOAD":  # receives UPLOAD<SPLIT><length>
             data_length = int(data[1])
@@ -130,8 +152,7 @@ def handle_client(conn, addr):
             send_data += "DOWNLOAD"+SPLIT+str(length)+SPLIT+str(fname)
             conn.send(send_data.encode(FORMAT))  # send "ready to send x bytes"
             data_back = receive(conn)  # wait for ack from server
-            # print("INITIAL READY RECIEVED")
-            print(f"Sending file {fname}")
+            print("INITIAL READY RECIEVED")
             if data_back == -1:
                 print("ERROR: PROBLEM IN READY ACK")
                 continue
@@ -151,11 +172,11 @@ def handle_client(conn, addr):
                 # print(f.tell())
             end_message = START + SPLIT + "DONE"
             conn.send(end_message.encode(FORMAT))
-            print(f"File sent")
 
             f.close()
-            file_dict[fname].open_semaphore = False
+
             file_dict[fname].num_downloads += 1
+            file_dict[fname].open_semaphore = False
 
     print(f"{addr} disconnected.")
     conn.close()
