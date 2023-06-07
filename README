@@ -1,0 +1,6 @@
+Authors: JT Reagor and Connor Talbot
+
+This is a project completed for CS 371: Intro to networking.
+It required us to create a server listening on our laptop's IP
+along with a client that could access the server and transfer files
+both directions.
